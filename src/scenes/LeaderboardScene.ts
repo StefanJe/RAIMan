@@ -26,6 +26,7 @@ interface LeaderboardSceneData {
 export class LeaderboardScene extends Phaser.Scene {
   private dom?: Phaser.GameObjects.DOMElement;
   private viewportEl?: HTMLDivElement;
+  private root?: HTMLDivElement;
   private statusEl?: HTMLDivElement;
   private offlineBadgeEl?: HTMLDivElement;
   private listEl?: HTMLDivElement;
@@ -203,9 +204,13 @@ export class LeaderboardScene extends Phaser.Scene {
     this.dom.setDepth(6000);
     this.dom.setScrollFactor(0);
     this.dom.setOrigin(0, 0);
+    this.dom.setPosition(0, 0);
 
     const root = this.dom.node as HTMLDivElement;
-    this.viewportEl = root.querySelector('[data-s="viewport"]') as HTMLDivElement | null ?? undefined;
+    this.viewportEl = root;
+    this.viewportEl.style.display = "block";
+    this.viewportEl.style.boxSizing = "border-box";
+    this.root = root.querySelector('[data-s="panel"]') as HTMLDivElement | null ?? undefined;
     this.statusEl = root.querySelector('[data-s="status"]') as HTMLDivElement | null ?? undefined;
     this.offlineBadgeEl = root.querySelector('[data-s="offlineBadge"]') as HTMLDivElement | null ?? undefined;
     this.listEl = root.querySelector('[data-s="list"]') as HTMLDivElement | null ?? undefined;
@@ -255,6 +260,21 @@ export class LeaderboardScene extends Phaser.Scene {
       if (e.key === "Enter") void this.handleSubmit();
     });
 
+    this.viewportEl.addEventListener(
+      "wheel",
+      (e) => {
+        e.stopPropagation();
+      },
+      { capture: true, passive: true }
+    );
+    this.viewportEl.addEventListener(
+      "touchmove",
+      (e) => {
+        e.stopPropagation();
+      },
+      { capture: true, passive: true }
+    );
+
     this.updateSubmitUi();
     void this.refresh();
 
@@ -264,6 +284,8 @@ export class LeaderboardScene extends Phaser.Scene {
       this.input.keyboard?.enableGlobalCapture();
       this.dom?.destroy();
       this.dom = undefined;
+      this.viewportEl = undefined;
+      this.root = undefined;
     });
 
     // Ensure top scroll for fresh open.
@@ -272,10 +294,24 @@ export class LeaderboardScene extends Phaser.Scene {
     } catch {
       // ignore
     }
+
+    this.handleResize(this.scale.gameSize);
   }
 
   private handleResize(gameSize: Phaser.Structs.Size): void {
     this.dom?.setPosition(0, 0);
+    if (!this.viewportEl) return;
+    const w = Math.max(280, Math.floor(gameSize.width));
+    const h = Math.max(240, Math.floor(gameSize.height));
+    this.viewportEl.style.width = `${w}px`;
+    this.viewportEl.style.height = `${h}px`;
+
+    if (this.root) {
+      const panelW = Math.max(280, Math.min(740, Math.floor(gameSize.width - 28)));
+      this.root.style.width = `${panelW}px`;
+    }
+
+    this.dom?.updateSize();
   }
 
   private setStatus(text: string, tone: "info" | "ok" | "error" = "info"): void {
